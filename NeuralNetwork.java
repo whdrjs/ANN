@@ -122,12 +122,7 @@ public class NeuralNetwork {
 
 	// random
 	double getRandom() {
-		double 	re=randomWeightMultiplier * (rand.nextDouble() * 2 - 1);
-/*
-		if(re>1&&re<-1) {
-			re=randomWeightMultiplier * (rand.nextDouble() * 2 - 1);
-		}
-*/
+		double 	re=randomWeightMultiplier * (rand.nextDouble() * 2 - 1)/2;
 		return re;
 	}
 
