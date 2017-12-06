@@ -1,15 +1,21 @@
 package neural;
-
+/** 김종건
+ * 패키지의 몸체 
+ * main 함수존재
+ * XOR example
+ * 
+ */
 import java.text.*;
 import java.util.*;
+
+import org.jfree.ui.RefineryUtilities;
 
 public class NeuralNetwork {
 	static {
 		Locale.setDefault(Locale.ENGLISH);
 	}
-
 	final boolean isTrained = false;
-	final DecimalFormat df; //10진수의 값을 원하는 포멧으로 변형해주는 클래스
+	final DecimalFormat df;
 	final Random rand = new Random();
 	final ArrayList<Neuron> inputLayer = new ArrayList<Neuron>();
 	final ArrayList<Neuron> hiddenLayer = new ArrayList<Neuron>();
@@ -17,57 +23,74 @@ public class NeuralNetwork {
 	final Neuron bias = new Neuron();
 	final int[] layers;
 	final int randomWeightMultiplier = 1;
-
-	final double epsilon = 0.00000000001;
+    static XYSeriesDemo demo = new XYSeriesDemo("Weight Edge");
+	
+    private double epsilon = 0.00000000001;
 
 	final double learningRate = 0.9f;
-	final double momentum = 0.7f; //가중치
-
+	final double momentum = 0.7f;
+	/**김종건
+	 * XOR에 대한 인풋과 기대값을 설정해놓는다
+	 * 그래서
+	 */
 	// Inputs for xor problem
-	final double inputs[][] = { { 1, 1 }, { 1, 0 }, { 0, 1 }, { 0, 0 } };
+	final double inputs[][] = {  { 16, 9 }, { 8, 3 }, { 6, 1 }, { 11, 5 }};
+		//{  { 16, 9 }, { 8, 3 }, { 6, 1 }, { 11, 5 },{16,10},{13,18},{7,3},{4,7},{11,14},{0,0}};
+		//{{ 164, 91 }, { 89, 38 }, { 64, 15 }, { 114, 56 },{169,107},{132,182},{78,38},{48,72}};
+
 
 	// Corresponding outputs, xor training data
-	final double expectedOutputs[][] = { { 0 }, { 1 }, { 1 }, { 0 } };
-	double resultOutputs[][] = { { -1 }, { -1 }, { -1 }, { -1 } }; // dummy init
+	final double expectedOutputs[][] = {{1},{0},{0},{1},{1},{1},{0},{0},{1},{0}};	//예상 아웃풋
+	double resultOutputs[][] = {{-1},{-1},{-1},{-1},{-1},{-1},{-1},{-1},{-1},{-1}}; // dummy init ??
 	double output[];
 
 	// for weight update all
 	final HashMap<String, Double> weightUpdate = new HashMap<String, Double>();
-
+	//메인함수
 	public static void main(String[] args) {
-		NeuralNetwork nn = new NeuralNetwork(2, 4, 1); // 두개의 인풋 뉴런, 4개의 뉴런 in hidden layer, 하나의 뉴런 인 output
-		int maxRuns = 50000;//max runs
+		NeuralNetwork nn = new NeuralNetwork(2, 4, 1);
+		int maxRuns = 500000;
 		double minErrorCondition = 0.001;
 		nn.run(maxRuns, minErrorCondition);
+
+        demo.pack();
+        RefineryUtilities.centerFrameOnScreen(demo);
+        demo.setVisible(true);
 	}
-
+	/**김종건
+	 * 46줄(main)에서 실행
+	 * 
+	 * @param input
+	 * @param hidden
+	 * @param output
+	 */
 	public NeuralNetwork(int input, int hidden, int output) {
-		this.layers = new int[] { input, hidden, output };
-		df = new DecimalFormat("#.0#"); // 0은 표시한 자리수 만큼의 값을 최소한으로 표시, #는 표시한 소수점자리수만큼 반올림
-
+		this.layers = new int[] { input, hidden, output }; //layer 는 array
+		df = new DecimalFormat("#.0#");
 		/**
 		 * Create all neurons and connections Connections are created in the
 		 * neuron class
+		 * 포문으로 layer 어레이에서 순서대로 in, hidden ,out 각 if문에 맞추어
 		 */
 		for (int i = 0; i < layers.length; i++) {
 			if (i == 0) { // input layer
-				for (int j = 0; j < layers[i]; j++) { //2번 돌겠네
-					Neuron neuron = new Neuron(); // id는 counter ++ 값. neuron 의 id 는 0에서 부터 시작 
-					inputLayer.add(neuron);
+				//node 생성한다
+				for (int j = 0; j < layers[i]; j++) {
+					Neuron neuron = new Neuron(); //=>neuron.java 
+					inputLayer.add(neuron);	//arraylist에 추가
 				}
 			} else if (i == 1) { // hidden layer
 				for (int j = 0; j < layers[i]; j++) {
 					Neuron neuron = new Neuron();
-					neuron.addInConnectionsS(inputLayer); //inputlayer 0, 1, 에 각각 connection 이 생섬 그 관계는 connectionLookup hashmap 에 저장됨.
-					neuron.addBiasConnection(bias);
-					hiddenLayer.add(neuron);
+					neuron.addInConnectionsS(inputLayer);//input레이어에서의 노드만큼 할것이다
+					neuron.addBiasConnection(bias);//bias설정
+					hiddenLayer.add(neuron);  
 				}
 			}
-
 			else if (i == 2) { // output layer
 				for (int j = 0; j < layers[i]; j++) {
 					Neuron neuron = new Neuron();
-					neuron.addInConnectionsS(hiddenLayer);
+					neuron.addInConnectionsS(hiddenLayer);//이번엔 히든레이어 노드들
 					neuron.addBiasConnection(bias);
 					outputLayer.add(neuron);
 				}
@@ -78,10 +101,10 @@ public class NeuralNetwork {
 
 		// initialize random weights
 		for (Neuron neuron : hiddenLayer) {
-			ArrayList<Connection> connections = neuron.getAllInConnections();
+			ArrayList<Connection> connections = neuron.getAllInConnections();	//각 히든레이어 노드에서의 선 받아온다
 			for (Connection conn : connections) {
-				double newWeight = getRandom(); //bias , hidden layer 커낵션 모두를 가져와서 랜덤
-				conn.setWeight(newWeight);
+				double newWeight = getRandom();	//랜덤으로 -1 ~ 1 의 수 weight에 받는다
+				conn.setWeight(newWeight);//커넥션에 weight 저장
 			}
 		}
 		for (Neuron neuron : outputLayer) {
@@ -92,19 +115,20 @@ public class NeuralNetwork {
 			}
 		}
 
-		// reset id counters -> 왜?!!!
+		// reset id counters
 		Neuron.counter = 0;
 		Connection.counter = 0;
-
-		if (isTrained) {
-			trainedWeights();
-			updateAllWeights();
-		}
 	}
 
 	// random
 	double getRandom() {
-		return randomWeightMultiplier * (rand.nextDouble() * 2 - 1); // [-1;1[
+		double 	re=randomWeightMultiplier * (rand.nextDouble() * 2 - 1);
+/*
+		if(re>1&&re<-1) {
+			re=randomWeightMultiplier * (rand.nextDouble() * 2 - 1);
+		}
+*/
+		return re;
 	}
 
 	/**
@@ -113,16 +137,16 @@ public class NeuralNetwork {
 	 *            There is equally many neurons in the input layer as there are
 	 *            in input variables
 	 */
-	public void setInput(double inputs[]) {
+	public void setInput(double inputs[]) {	//??
 		for (int i = 0; i < inputLayer.size(); i++) {
-			inputLayer.get(i).setOutput(inputs[i]);
+			inputLayer.get(i).setOutput(inputs[i]);	//o return
 		}
 	}
 
 	public double[] getOutput() {
 		double[] outputs = new double[outputLayer.size()];
 		for (int i = 0; i < outputLayer.size(); i++)
-			outputs[i] = outputLayer.get(i).getOutput();
+			outputs[i] = outputLayer.get(i).getOutput();	//각 뉴런의(노드의 ) 아웃풋(시그모이드계산) 저장
 		return outputs;
 	}
 
@@ -130,7 +154,7 @@ public class NeuralNetwork {
 	 * Calculate the output of the neural network based on the input The forward
 	 * operation
 	 */
-	public void activate() {
+	public void activate() {	//각 노드의 시그모이드 계산 값 저장 각 뉴런에
 		for (Neuron n : hiddenLayer)
 			n.calculateOutput();
 		for (Neuron n : outputLayer)
@@ -208,35 +232,37 @@ public class NeuralNetwork {
 		double error = 1;
 		for (i = 0; i < maxSteps && error > minError; i++) {
 			error = 0;
+			//System.out.println("3");
 			for (int p = 0; p < inputs.length; p++) {
-				setInput(inputs[p]);
-
+				setInput(inputs[p]);	//인풋값 
+				//??????????????????
 				activate();
 
 				output = getOutput();
-				resultOutputs[p] = output;
+				resultOutputs[p] = output;	//기대값 0 1 1 0 이 아닌 실제 값
 
 				for (int j = 0; j < expectedOutputs[p].length; j++) {
 					double err = Math.pow(output[j] - expectedOutputs[p][j], 2);
 					error += err;
-				}
+				}//얼마만큼에러?
 
-				applyBackpropagation(expectedOutputs[p]);
-			}
+				applyBackpropagation(expectedOutputs[p]);	//역전판 알고리즘 기대값 0110이랑 보냠
+			}//인풀 노드마다
+			showWeights(i);
 		}
 
 		printResult();
-		
+
 		System.out.println("Sum of squared errors = " + error);
-		System.out.println("##### EPOCH " + i+"\n"); //Epoch 프린트!!!!!!!!!!!!!!!!!!!!!!!!
-		if (i == maxSteps) {
+		System.out.println("##### EPOCH " + i+"\n");
+		if (i >= maxSteps) {
 			System.out.println("!Error training try again");
 		} else {
-			printAllWeights();
-			printWeightUpdate();
+			//printAllWeights();
+			//printWeightUpdate();
 		}
 	}
-	
+
 	void printResult()
 	{
 		System.out.println("NN example with xor training");
@@ -259,7 +285,7 @@ public class NeuralNetwork {
 		}
 		System.out.println();
 	}
-
+	//
 	String weightKey(int neuronId, int conId) {
 		return "N" + neuronId + "_C" + conId;
 	}
@@ -270,11 +296,11 @@ public class NeuralNetwork {
 	public void updateAllWeights() {
 		// update weights for the output layer
 		for (Neuron n : outputLayer) {
-			ArrayList<Connection> connections = n.getAllInConnections();
+			ArrayList<Connection> connections = n.getAllInConnections(); //아웃풋레이어에 연결 되어있는 선들
 			for (Connection con : connections) {
-				String key = weightKey(n.id, con.id);
-				double newWeight = weightUpdate.get(key);
-				con.setWeight(newWeight);
+				String key = weightKey(n.id, con.id);  //N뉴런아이디_C커넥션아이디
+				double newWeight = weightUpdate.get(key);	//아까 트레이닝한 거에서 value얻어온다
+				con.setWeight(newWeight);	//커넥션 엣지에 그 값 할당
 			}
 		}
 		// update weights for the hidden layer
@@ -289,70 +315,48 @@ public class NeuralNetwork {
 	}
 
 	// trained data
-	void trainedWeights() {
-		weightUpdate.clear();
-		
-		weightUpdate.put(weightKey(3, 0), 1.03); // 웨잇 키가 왜 n에대가 3을 넣을까?!
-		weightUpdate.put(weightKey(3, 1), 1.13); // 첫번째 제너릭이 key 값이고 두번째 제너릭이 data 값
-		weightUpdate.put(weightKey(3, 2), -.97);
-		weightUpdate.put(weightKey(4, 3), 7.24);
-		weightUpdate.put(weightKey(4, 4), -3.71);
-		weightUpdate.put(weightKey(4, 5), -.51);
-		weightUpdate.put(weightKey(5, 6), -3.28);
-		weightUpdate.put(weightKey(5, 7), 7.29);
-		weightUpdate.put(weightKey(5, 8), -.05);
-		weightUpdate.put(weightKey(6, 9), 5.86);
-		weightUpdate.put(weightKey(6, 10), 6.03);
-		weightUpdate.put(weightKey(6, 11), .71);
-		weightUpdate.put(weightKey(7, 12), 2.19);
-		weightUpdate.put(weightKey(7, 13), -8.82);
-		weightUpdate.put(weightKey(7, 14), -8.84);
-		weightUpdate.put(weightKey(7, 15), 11.81);
-		weightUpdate.put(weightKey(7, 16), .44);
-	}
-
-	public void printWeightUpdate() {
-		System.out.println("printWeightUpdate, put this i trainedWeights() and set isTrained to true");
+	public void showWeights(int cnt) {
+		int i=0;
 		// weights for the hidden layer
 		for (Neuron n : hiddenLayer) {
 			ArrayList<Connection> connections = n.getAllInConnections();
 			for (Connection con : connections) {
-				String w = df.format(con.getWeight());
-				System.out.println("weightUpdate.put(weightKey(" + n.id + ", "
-						+ con.id + "), " + w + ");");
+				double w = con.getWeight();
+				//System.out.println("n=" + n.id + " c=" + con.id + " w=" + w);
+				if(i==0)
+					demo.series.add(cnt, w);
+				else if(i==1)
+					demo.series2.add(cnt, w);
+				else if(i==2)
+					demo.series3.add(cnt, w);
+				else if(i==3)
+					demo.series4.add(cnt, w);
+				else if(i==4)
+					demo.series5.add(cnt, w);
+				else if(i==5)
+					demo.series6.add(cnt, w);
+				else if(i==6)
+					demo.series7.add(cnt, w);
+				else if(i==7)
+					demo.series8.add(cnt, w);
+				i++;
 			}
 		}
 		// weights for the output layer
 		for (Neuron n : outputLayer) {
 			ArrayList<Connection> connections = n.getAllInConnections();
 			for (Connection con : connections) {
-				String w = df.format(con.getWeight());
-				System.out.println("weightUpdate.put(weightKey(" + n.id + ", "
-						+ con.id + "), " + w + ");");
-			}
-		}
-		System.out.println();
-	}
-
-	public void printAllWeights() {
-		System.out.println("printAllWeights");
-		// weights for the hidden layer
-		for (Neuron n : hiddenLayer) {
-			ArrayList<Connection> connections = n.getAllInConnections();
-			for (Connection con : connections) {
 				double w = con.getWeight();
-				System.out.println("n=" + n.id + " c=" + con.id + " w=" + w);
+				//System.out.println("n=" + n.id + " c=" + con.id + " w=" + w);
+				if(i==12)
+					demo.series9.add(cnt, w);
+				else if(i==13)
+					demo.series10.add(cnt, w);
+				else if(i==14)
+					demo.series11.add(cnt, w);
+				else if(i==15)
+					demo.series12.add(cnt, w);
 			}
 		}
-		// weights for the output layer
-		// n 이 나온다!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-		for (Neuron n : outputLayer) {
-			ArrayList<Connection> connections = n.getAllInConnections();
-			for (Connection con : connections) {
-				double w = con.getWeight();
-				System.out.println("n=" + n.id + " c=" + con.id + " w=" + w);
-			}
-		}
-		System.out.println();
 	}
 }
